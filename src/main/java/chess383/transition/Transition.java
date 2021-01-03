@@ -2,7 +2,7 @@
  *  Transition.java
  *
  *  chess383 is a collection of chess related utilities.
- *  Copyright (C) 2020 Jörg Dippel
+ *  Copyright (C) 2020, 2021 Jörg Dippel
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -49,7 +49,7 @@ import chess383.statemachine.exception.PieceTypeToLocationAssertionViolationExce
  * Provides a change between two positions.
  *
  * @author    Jörg Dippel
- * @version   November 2020
+ * @version   January 2021
  *
  */
 public class Transition {
@@ -321,6 +321,88 @@ public class Transition {
         return new ArrayList<String>();
     }
     
+    private void setOnlyOwnCorrelation( Correlation ownCorrelatation ) {
+    
+        if( getColor() == ColorEnum.WHITE ) {
+            setFirst( ownCorrelatation );
+            setSecond( getPosition().getSecond() );
+        }
+        else {
+            setFirst( getPosition().getFirst() );
+            setSecond( ownCorrelatation );
+        }
+    }
+    
+    private void setBothCorrelations( Correlation ownCorrelatation, Correlation opponenntCorrelatation ) {
+        
+        if( getColor() == ColorEnum.WHITE ) {
+            setFirst(  ownCorrelatation );
+            setSecond( opponenntCorrelatation );
+        }
+        else {
+            setFirst(  opponenntCorrelatation );
+            setSecond( ownCorrelatation );
+        }
+    }
+    
+    private Position changeForDefaultMoving( String origin, String target, List<String> movingLine ) {
+        
+        Correlation correlation = getOwnCorrelation();
+        Piece piece = correlation.getPlayer().getPiece( origin );
+        Player player = correlation.getPlayer().replace( origin, target );
+        Castling castling = correlation.getCastling();
+        
+        if( piece.isPawn() ) {
+            setEnPassantLocation( movingLine, target );
+            setNumberOfPlys( CAPTURE_OR_PAWN_MOVE_RESET );
+        }
+        else {
+            setEnPassant( EnPassantLocation.createEmptyPlaceholder() );
+            setNumberOfPlys( getPosition().getNumberOfPlys() + 1 );
+            if( piece.isRook() ) {
+                // possible correction of castling flags
+                castling = castling.remove( origin ); 
+            }
+            else if( piece.isKing() ) {
+                castling = Castling.createEmpty();
+            }
+        }
+        
+        setOnlyOwnCorrelation( Correlation.create( player, castling ) );
+        return verifyPosition( createPosition(), findKingLocation( player ) );
+    }
+    
+    private Position changeForDefaultCapturing( String origin, String target ) {
+        
+        Correlation oppenentCorrelation =  getOpponentCorrelation();
+        Player opponentPlayer = oppenentCorrelation.getPlayer();
+        Piece opponentPiece = opponentPlayer.getPiece( target );
+        Castling opponentCastling = oppenentCorrelation.getCastling();
+        
+        Correlation ownCorrelation = getOwnCorrelation();
+        Player ownPlayer = ownCorrelation.getPlayer().replace( origin, target );
+        Castling ownCastling = ownCorrelation.getCastling();
+        Piece ownPiece = getOriginPiece();
+        
+        if( ownPiece.isKing() ) {
+            ownCastling = Castling.createEmpty();
+        }
+        else if( ownPiece.isRook() ) {
+            ownCastling = ownCastling.remove( origin );
+        }
+        
+        if( opponentPiece.isRook() ) {
+            opponentCastling = opponentCastling.remove( target );
+        }
+        
+        opponentPlayer = opponentPlayer.remove( target );
+        setEnPassant( EnPassantLocation.createEmptyPlaceholder() );
+        setNumberOfPlys( 0 );
+        
+        setBothCorrelations( Correlation.create( ownPlayer, ownCastling ), Correlation.create( opponentPlayer, opponentCastling ) );
+        return verifyPosition( createPosition(), findKingLocation( ownPlayer ) );
+    }
+    
     private Position changeForDefault( String origin, String target ) {
     
         Piece targetPiece = getOpponentCorrelation().getPlayer().getPiece( target );
@@ -335,34 +417,7 @@ public class Transition {
                     while( iterator.hasNext() ) {
                         location = iterator.next();
                         if( isMatchOfLocations( location, target ) ) {
-                            
-                            Piece piece = ownCorrelation.getPlayer().getPiece( origin );
-                            Player player = ownCorrelation.getPlayer().replace( origin, target );
-                            Castling castling = ownCorrelation.getCastling();
-                            setEnPassant( EnPassantLocation.createEmptyPlaceholder() );
-                            setNumberOfPlys( getPosition().getNumberOfPlys() + 1 );
-                            
-                            if( piece.isRook() ) {
-                                // possible correction of castling flags
-                                castling = castling.remove( origin ); 
-                            }
-                            else if( piece.isPawn() ) {
-                                overruleEnPassantLocation( line, target );
-                                setNumberOfPlys( CAPTURE_OR_PAWN_MOVE_RESET );
-                            }
-                            else if( piece.isKing() ) {
-                                castling = Castling.createEmpty();
-                            }
-                            if( getColor() == ColorEnum.WHITE ) {
-                                setFirst( Correlation.create( player, castling ));
-                                setSecond( getPosition().getSecond() );
-                            }
-                            else {
-                                setFirst( getPosition().getFirst() );
-                                setSecond( Correlation.create( player, castling ));
-                            }
-                            
-                            return verifyPosition( createPosition(), findKingLocation( player ));
+                            return changeForDefaultMoving( origin, target, line  );
                         }
                         else if( isOccupied( location ) ) {
                             LocationIsOccupiedException.throwStateMachineException( location );
@@ -370,38 +425,25 @@ public class Transition {
                     }
                 }
             }
-            
         }
         else { // capture
-            Player opponentPlayer = getOpponentCorrelation().getPlayer();
-            Piece opponentPiece = opponentPlayer.getPiece( target );
-            Castling opponentCastling = getOpponentCorrelation().getCastling();
-            Player ownPlayer = getOwnCorrelation().getPlayer().replace( origin, target );
-            Castling ownCastling = getOwnCorrelation().getCastling();
-            if( getOriginPiece().isKing() ) {
-                ownCastling = Castling.createEmpty();
-            }
-            else if( getOriginPiece().isRook() ) {
-                ownCastling = ownCastling.remove( origin );
-            }
-            if( opponentPiece.isRook() ) {
-                opponentCastling = opponentCastling.remove( target );
-            }
-            
-            opponentPlayer = opponentPlayer.remove( target );
-            setEnPassant( EnPassantLocation.createEmptyPlaceholder() );
-            setNumberOfPlys( 0 );
-            
-            if( getColor() == ColorEnum.WHITE ) {
-                setFirst(  Correlation.create( ownPlayer, ownCastling ));
-                setSecond( Correlation.create( opponentPlayer, opponentCastling ));
-            }
-            else {
-                setFirst(  Correlation.create( opponentPlayer, opponentCastling ));
-                setSecond( Correlation.create( ownPlayer, ownCastling ));
-            }
-            
-            return verifyPosition( createPosition(), findKingLocation( ownPlayer ));
+             String location;
+             Set<List<String>> lines = originPiece.getCapturingLines( ); 
+             for( List<String> line : lines ) {
+                 if( line.contains( target )) {
+                     Iterator<String> iterator = line.iterator();
+                     if( iterator.hasNext() ) location = iterator.next();
+                     while( iterator.hasNext() ) {
+                         location = iterator.next();
+                         if( isMatchOfLocations( location, target ) ) {
+                             return changeForDefaultCapturing( origin, target );
+                         }
+                         else if( isOccupied( location ) ) {
+                             LocationIsOccupiedException.throwStateMachineException( location );
+                         }
+                     }
+                 }
+             }
         }
         
         return Position.createEmptyPlaceholder();
@@ -429,15 +471,23 @@ public class Transition {
         return position;
     }
     
-    private void overruleEnPassantLocation( List<String> line, String target ) {
+    private void setEnPassantLocation( List<String> line, String target ) {
         
-        String location = "";
-        Iterator<String> iterator = line.iterator();
-        if( iterator.hasNext() ) location = iterator.next();          // this is the original starting location
-        if( iterator.hasNext() ) location = iterator.next();          // this is the follow up
-        if( ! isMatchOfLocations( target, location ) ) {              // this means follow-up and target are differing
-            setEnPassant( EnPassantLocation.create( location ) );     //  overruling
-        }   
+        if( line.contains( target ) ) {
+            String location = "";
+            Iterator<String> iterator = line.iterator();
+            if( iterator.hasNext() ) location = iterator.next();          // this is the original starting location
+            if( iterator.hasNext() ) location = iterator.next();          // this is the follow up
+            if( isMatchOfLocations( target, location ) ) {                // this means follow-up and target are differing
+                setEnPassant( EnPassantLocation.createEmptyPlaceholder() );
+            }
+            else {
+                setEnPassant( EnPassantLocation.create( location ) );
+            }
+        }
+        else {
+            setEnPassant( EnPassantLocation.createEmptyPlaceholder() );
+        }
     }
     
     private Position createPosition() {

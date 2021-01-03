@@ -4,8 +4,8 @@
 
   <groupId>de.chess383</groupId>
   <artifactId>transition</artifactId>
-  <!-- version 1.2.0 == 1.1.22 -->
-  <version>1.2.0</version>
+  <!-- version 1.3.0 == 1.2.4 -->
+  <version>1.3.0</version>
   <packaging>jar</packaging>
   <description>dynamic chess position</description>
 

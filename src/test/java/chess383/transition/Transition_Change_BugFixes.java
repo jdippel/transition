@@ -24,9 +24,11 @@ import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.provider.Arguments;
 
 import chess383.position.Position;
 import chess383.statemachine.exception.KingWouldBeCheckedAfterwardsException;
+import chess383.statemachine.exception.LocationIsOccupiedException;
 
 /**
  * <p>
@@ -192,6 +194,41 @@ public class Transition_Change_BugFixes {
         assertThat( "r3k2R/pp1qppb1/2nn2p1/3p4/3P1B2/2PQ4/PP1NNPP1/2KR4 b q - 0 28" )
                   .as( "black king moves and the related castling flags should be removed" )
                   .isEqualTo( position.toString() );
+    }
+    
+    @Test
+    @DisplayName("when white rooks can capture into the same direction to the same location then only one change is legal (legal move)")
+    public void change_WhenBlackRooksCanCaptureIntoTheSameDirectionToTheSameLocationThenOnlyOneChangeIsLegal_LegalMove() {
+        
+        // Spassky - Fischer, WM 1972 (20)
+        // 1.e4 c5 2.Nf3 Nc6 3.d4 cd4 4.Nd4 Nf6 5.Nc3 d6 6.Bg5 e6 7.Qd2 a6 8.O-O-O Bd7 9.f4 Be7 10.Be2 O-O
+        // 11.Bf3 h6 12.Bh4 Ne4 13.Be7 Nd2 14.Bd8 Nf3 15.Nf3 Rfd8 16.Rd6 Kf8 17.Rhd1 Ke7 18.Na4 Be8 19.Rd8
+
+        Position position;
+        
+        position = Position.create( "r2rb3/1p2kpp1/p1nRp2p/8/N4P1P/5N2/PPP3P1/2KR4 w - - 5 37" );
+        position =  Transition.create( position ).change( "d6", "d8" );
+        
+        assertThat( "r2Rb3/1p2kpp1/p1n1p2p/8/N4P1P/5N2/PPP3P1/2KR4 b - - 0 38" )
+                  .as( "white rook captures the related black rook" )
+                  .isEqualTo( position.toString() );
+    }
+    
+    @Test
+    @DisplayName("when white rooks can capture into the same direction to the same location then only one change is legal (thrown exception)")
+    public void change_WhenBlackRooksCanCaptureIntoTheSameDirectionToTheSameLocationThenOnlyOneChangeIsLegal_Exception() {
+        
+        // Spassky - Fischer, WM 1972 (20)
+        // 1.e4 c5 2.Nf3 Nc6 3.d4 cd4 4.Nd4 Nf6 5.Nc3 d6 6.Bg5 e6 7.Qd2 a6 8.O-O-O Bd7 9.f4 Be7 10.Be2 O-O
+        // 11.Bf3 h6 12.Bh4 Ne4 13.Be7 Nd2 14.Bd8 Nf3 15.Nf3 Rfd8 16.Rd6 Kf8 17.Rhd1 Ke7 18.Na4 Be8 19.Rd8
+
+        Position position;
+        
+        position = Position.create( "r2rb3/1p2kpp1/p1nRp2p/8/N4P1P/5N2/PPP3P1/2KR4 w - - 5 37" );
+        
+        assertThatThrownBy( () ->  Transition.create( position ).change( "d1", "d8" ) )
+                  .as( "a capturing white rook should only pass empty locations - if not an exception is thrown" )
+                  .isInstanceOf( LocationIsOccupiedException.class );
     }
 }
  
