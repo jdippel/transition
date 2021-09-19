@@ -1,11 +1,11 @@
 # README #
 
-This README documents a library for static chess positions.
+This README documents a library for transforming chess positions.
 
 ### What is this repository for? ###
 
-* a library for static chess positions.
-* Version 1.4.1
+* a library for chess positions.
+* Version 1.4.3
 
 ### How do I get set up? ###
 
