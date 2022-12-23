@@ -53,6 +53,19 @@ public class Transition_Change_Exceptions {
                   .as( "lacation must describe a valid locationn" )
                   .isInstanceOf( InputParameterAssertionViolationException.class );
     }
+
+    @Test
+    @DisplayName("null is not a location - should be detected with a InputParameterAssertionViolationException exception")
+    public void change_LocationIsNotDefinedForTarget() {
+
+        // "e4", "d5", "exd5", "Qxd5", "Nc3", "Qa5", "d4", "e5", "Bc4", "Nc6", "d5", "Nd4", "Be3", "Bc5", "Ne2"
+
+        Position position = Position.create( "r1b1k1nr/ppp2ppp/8/q1bPp3/2Bn4/2N1B3/PPP1NPPP/R2QK2R b KQkq - 4 16" );
+        final String TARGET = null;
+        assertThatThrownBy( () ->  Transition.create( position ).change( "a5", TARGET ) )
+                .as( "lacation must describe a valid locationn" )
+                .isInstanceOf( InputParameterAssertionViolationException.class );
+    }
     
     @Test
     @DisplayName("location does not describe a location - should be detected with a InputParameterAssertionViolationException exception")
@@ -109,7 +122,7 @@ public class Transition_Change_Exceptions {
     
     @Test
     @DisplayName("a piece captures a bishop of its own pieces - should be detected with a LocationIsOccupiedException exception")
-    public void change_LocationIsOccupiedException_ForSuurce() {
+    public void change_LocationIsOccupiedException_ForSource() {
         
         // "e4", "d5", "exd5", "Qxd5", "Nc3", "Qa5", "d4", "e5", "Bc4", "Nc6", "d5", "Nd4", "Be3", "Bc5", "Ne2"
         

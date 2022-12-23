@@ -49,7 +49,7 @@ import chess383.statemachine.exception.PieceTypeToLocationAssertionViolationExce
  * Provides a change between two positions.
  *
  * @author    Jörg Dippel
- * @version   January 2021
+ * @version   November 2022
  *
  */
 public class Transition {
